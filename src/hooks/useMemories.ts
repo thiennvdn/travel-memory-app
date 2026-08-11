@@ -18,32 +18,36 @@ export function useMemories() {
     async function load() {
       setLoading(true);
       setError(null);
-      const { data: rows, error: fetchError } = await supabase
-        .from("memories")
-        .select("*")
-        .order("memory_date", { ascending: false });
+      try {
+        const { data: rows, error: fetchError } = await supabase
+          .from("memories")
+          .select("*")
+          .order("memory_date", { ascending: false });
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (fetchError) {
-        setError("Không tải được dữ liệu, thử lại sau.");
-        setLoading(false);
-        return;
+        if (fetchError) {
+          setError("Không tải được dữ liệu, thử lại sau.");
+          return;
+        }
+
+        setData(
+          (rows ?? []).map((row) => ({
+            id: row.id,
+            place: row.place,
+            date: formatDate(row.memory_date),
+            note: row.note,
+            color: row.color,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            photos: row.photos ?? [],
+          }))
+        );
+      } catch {
+        if (!cancelled) setError("Không tải được dữ liệu, thử lại sau.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      setData(
-        (rows ?? []).map((row) => ({
-          id: row.id,
-          place: row.place,
-          date: formatDate(row.memory_date),
-          note: row.note,
-          color: row.color,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          photos: row.photos ?? [],
-        }))
-      );
-      setLoading(false);
     }
 
     load();
