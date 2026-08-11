@@ -19,6 +19,7 @@ Ngày: 2026-08-11
 - Chưa nối dữ liệu thật (Supabase) — vẫn dùng `mockMemories`, chỉ đổi từ toạ độ tương đối sang lat/lng thật.
 - Chưa tối ưu cho web (`expo start --web`) — `react-native-maps` không chạy trên web.
 - Chuẩn bị phát hành CH Play (package name, icon, build production) — sẽ làm ở bước riêng sau khi các tính năng chính hoàn thiện.
+- API key Google Maps cho Android (`android.config.googleMaps.apiKey` trong `app.json`) chưa được cấu hình — cần bổ sung trước khi build dev client hoặc bản Play Store (không cần cho test qua Expo Go).
 
 ## Thư viện
 

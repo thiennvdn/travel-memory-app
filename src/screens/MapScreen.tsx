@@ -60,6 +60,9 @@ export default function MapScreen() {
             <Marker
               key={m.id}
               coordinate={{ latitude: m.latitude, longitude: m.longitude }}
+              anchor={{ x: 0.5, y: 1 }}
+              centerOffset={{ x: 0, y: -24.5 }}
+              tracksViewChanges={false}
               onPress={() => setSelected(m)}
             >
               <View style={styles.pinWrap}>

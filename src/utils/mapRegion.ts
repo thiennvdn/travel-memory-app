@@ -10,8 +10,18 @@ export type Region = {
 const PADDING_FACTOR = 1.4;
 const MIN_DELTA = 0.05;
 
+// Vùng dự phòng khi không có toạ độ nào (trung tâm Việt Nam, thu nhỏ).
+const FALLBACK_REGION: Region = {
+  latitude: 16.0,
+  longitude: 107.0,
+  latitudeDelta: 8,
+  longitudeDelta: 8,
+};
+
 // Tính vùng bản đồ (region) vừa đủ để chứa hết danh sách toạ độ, có đệm (padding).
 export function getRegionForCoordinates(coordinates: Coordinate[]): Region {
+  if (coordinates.length === 0) return FALLBACK_REGION;
+
   const latitudes = coordinates.map((c) => c.latitude);
   const longitudes = coordinates.map((c) => c.longitude);
 
