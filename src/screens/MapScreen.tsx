@@ -1,6 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { mockMemories, Memory } from "../data/mockMemories";
 import MemoryPreviewCard from "../components/MemoryPreviewCard";
@@ -11,12 +12,50 @@ const initialRegion = getRegionForCoordinates(mockMemories);
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const [selected, setSelected] = useState<Memory | null>(null);
+  const [showsUserLocation, setShowsUserLocation] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function centerOnUser() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          return; // giữ nguyên initialRegion (đã canh vừa khung chứa hết pin)
+        }
+        const position = await Location.getCurrentPositionAsync({});
+        if (cancelled) return;
+        setShowsUserLocation(true);
+        mapRef.current?.animateToRegion(
+          {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          },
+          400
+        );
+      } catch {
+        // Lấy vị trí lỗi -> giữ nguyên initialRegion (fallback âm thầm).
+      }
+    }
+
+    centerOnUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Bản đồ của bạn</Text>
       <View style={styles.mapArea}>
-        <MapView ref={mapRef} style={styles.map} initialRegion={initialRegion}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={initialRegion}
+          showsUserLocation={showsUserLocation}
+        >
           {mockMemories.map((m) => (
             <Marker
               key={m.id}
