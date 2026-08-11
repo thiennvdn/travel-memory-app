@@ -11,7 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Travel Memory dùng vị trí của bạn để hiện bạn đang ở đâu trên bản đồ kỷ niệm."
+        "NSLocationWhenInUseUsageDescription": "Travel Memory dùng vị trí của bạn để hiện bạn đang ở đâu trên bản đồ kỷ niệm.",
+        "NSCameraUsageDescription": "Travel Memory cần quyền camera để bạn chụp ảnh cho kỷ niệm.",
+        "NSPhotoLibraryUsageDescription": "Travel Memory cần quyền thư viện ảnh để bạn chọn ảnh cho kỷ niệm."
       }
     },
     "android": {
@@ -23,6 +25,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Travel Memory dùng vị trí của bạn để hiện bạn đang ở đâu trên bản đồ kỷ niệm."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Travel Memory cần quyền camera để bạn chụp ảnh cho kỷ niệm.",
+          "photosPermission": "Travel Memory cần quyền thư viện ảnh để bạn chọn ảnh cho kỷ niệm."
         }
       ]
     ]
