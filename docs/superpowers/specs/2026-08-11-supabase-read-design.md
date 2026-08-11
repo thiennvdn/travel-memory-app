@@ -97,8 +97,8 @@ Ghi chú thiết kế:
 
 ## Lỗi & giới hạn
 
-- Không có realtime/subscription — chỉ fetch 1 lần lúc mount mỗi màn hình. Thêm/sửa dữ liệu trực tiếp trên Supabase Dashboard sẽ không tự cập nhật trên app nếu đang mở sẵn — cần mở lại tab/màn hình.
-- Không retry tự động khi lỗi mạng — chỉ hiện thông báo lỗi, người dùng tự mở lại app/tab để thử lại.
+- Không có realtime/subscription — chỉ fetch 1 lần lúc mount mỗi màn hình. **Lưu ý (phát hiện ở final review, khác với dự đoán ban đầu):** bottom tab navigator không unmount màn hình khi chuyển tab — mount lần đầu focus rồi giữ nguyên suốt vòng đời app — nên chuyển qua chuyển lại tab **không** làm fetch lại. Muốn tải lại dữ liệu mới (kể cả sau khi lỗi mạng) hiện chỉ có cách tắt hẳn app rồi mở lại. Đây cũng là lý do bước 2 (nối nút Lưu) bắt buộc phải thêm cơ chế refetch (ví dụ `useFocusEffect` hoặc một store dùng chung) — nếu không, kỷ niệm vừa lưu sẽ không hiện ra ở Bản đồ/Timeline/Thống kê cho tới khi khởi động lại app.
+- Không retry tự động khi lỗi mạng — chỉ hiện thông báo lỗi, người dùng phải khởi động lại app để thử lại (mở lại tab không đủ — xem lưu ý ở trên).
 - Vẫn chỉ test được qua Expo Go (không qua `expo start --web` vì `react-native-maps`).
 
 ## Kiểm thử thủ công
@@ -108,5 +108,5 @@ Ghi chú thiết kế:
 3. Tab "Bản đồ": xác nhận vẫn hiện đúng 4 pin ở đúng vị trí như trước (dữ liệu giờ đến từ Supabase, không phải mock).
 4. Tab "Timeline": xác nhận vẫn hiện đúng 4 dòng, đúng ngày tháng định dạng dd/mm/yyyy.
 5. Tab "Thống kê": xác nhận "Kỷ niệm đã lưu" hiện đúng số lượng dòng thật trong bảng (4), 3 chỉ số còn lại vẫn là số mock cũ.
-6. Tắt Wi-Fi trên điện thoại, mở lại tab "Bản đồ"/"Timeline" → xác nhận hiện thông báo lỗi thay vì crash/màn trắng.
+6. Tắt Wi-Fi trên điện thoại **trước khi mở app** (tab không tự fetch lại khi chuyển qua chuyển lại — xem "Lỗi & giới hạn"), rồi mở app và vào tab "Bản đồ"/"Timeline" → xác nhận hiện thông báo lỗi thay vì crash/màn trắng.
 7. Thử xoá `.env` (hoặc đổi tên tạm) rồi chạy `npx expo start` → xác nhận app báo lỗi rõ ràng ngay khi khởi động thay vì lỗi khó hiểu.
