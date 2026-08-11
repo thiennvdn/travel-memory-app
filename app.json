@@ -9,9 +9,22 @@
       "backgroundColor": "#E6F1FB"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Travel Memory dùng vị trí của bạn để hiện bạn đang ở đâu trên bản đồ kỷ niệm."
+      }
     },
-    "android": {},
-    "web": {}
+    "android": {
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "web": {},
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Travel Memory dùng vị trí của bạn để hiện bạn đang ở đâu trên bản đồ kỷ niệm."
+        }
+      ]
+    ]
   }
 }
