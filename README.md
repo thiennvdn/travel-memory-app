@@ -2,7 +2,7 @@
 
 Ứng dụng React Native (Expo) ghi lại kỷ niệm du lịch: bản đồ, dòng thời gian, ghi kỷ niệm mới, thống kê hành trình. Mục tiêu cuối: phát hành lên Google Play.
 
-Hiện đang dùng **mock data** (`src/data/mockMemories.ts`) — chưa nối backend. Bản đồ đã dùng **bản đồ thật** (`react-native-maps`) với toạ độ lat/lng thật + canh theo GPS.
+Hiện đang dùng **mock data** (`src/data/mockMemories.ts`) — chưa nối backend. Bản đồ đã dùng **bản đồ thật** (`react-native-maps`) với toạ độ lat/lng thật + canh theo GPS. Màn "Ghi mới" đã chụp/chọn được **ảnh thật** (`expo-image-picker`), nhưng nút "Lưu kỷ niệm" chưa nối logic lưu (cần backend).
 
 ## Chạy thử trên điện thoại
 
@@ -27,7 +27,7 @@ src/
   screens/
     MapScreen.tsx           # Bản đồ thật (react-native-maps) + pin theo lat/lng + canh GPS
     TimelineScreen.tsx      # Danh sách kỷ niệm theo thời gian
-    NewMemoryScreen.tsx     # Form thêm kỷ niệm mới
+    NewMemoryScreen.tsx     # Form thêm kỷ niệm mới + chụp/chọn ảnh thật
     StatsScreen.tsx         # Thống kê hành trình
   components/
     MemoryPreviewCard.tsx   # Thẻ xem nhanh nổi trên bản đồ
@@ -43,7 +43,7 @@ Các tính năng lớn được viết design doc + implementation plan trước
 
 1. ~~Thay khung bản đồ giả bằng bản đồ thật~~ — **Đã xong** (`react-native-maps` + `expo-location`, xem [docs/superpowers/specs/2026-08-11-real-map-design.md](docs/superpowers/specs/2026-08-11-real-map-design.md)).
    - Còn thiếu: Android Google Maps API key (`android.config.googleMaps.apiKey` trong `app.json`) — cần trước khi build ngoài Expo Go (dev client / Play Store).
-2. Nối `expo-image-picker` để chọn/chụp ảnh thật ở màn hình "Ghi mới".
+2. ~~Nối `expo-image-picker` để chọn/chụp ảnh thật ở màn hình "Ghi mới"~~ — **Đã xong** (xem [docs/superpowers/specs/2026-08-11-photo-picker-design.md](docs/superpowers/specs/2026-08-11-photo-picker-design.md)). Ảnh chỉ tồn tại local, chưa upload — nút "Lưu kỷ niệm" chưa nối logic.
 3. Dựng backend Supabase (Postgres) — bảng `memories`, `trips`, Storage cho ảnh.
 4. Thay mock data bằng gọi API Supabase (đọc/ghi thật).
 5. Thêm offline-first (lưu local trước, đồng bộ sau) bằng SQLite/WatermelonDB.
