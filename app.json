@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Travel Memory",
+    "slug": "travel-memory-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#E6F1FB"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {}
+  }
+}
