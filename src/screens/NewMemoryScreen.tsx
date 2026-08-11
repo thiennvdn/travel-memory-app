@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -19,32 +19,49 @@ export default function NewMemoryScreen() {
   const [place, setPlace] = useState("");
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
+  const isPickingRef = useRef(false);
 
   async function handleTakePhoto() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Cần quyền camera", "Cấp quyền camera để chụp ảnh cho kỷ niệm.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled) {
-      setPhotos((prev) => [...prev, result.assets[0].uri]);
+    if (isPickingRef.current) return;
+    isPickingRef.current = true;
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Cần quyền camera", "Cấp quyền camera để chụp ảnh cho kỷ niệm.");
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      if (!result.canceled) {
+        setPhotos((prev) => [...prev, result.assets[0].uri]);
+      }
+    } catch {
+      Alert.alert("Không thể chụp ảnh", "Đã có lỗi xảy ra, vui lòng thử lại.");
+    } finally {
+      isPickingRef.current = false;
     }
   }
 
   async function handlePickFromLibrary() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Cần quyền thư viện ảnh", "Cấp quyền thư viện ảnh để chọn ảnh cho kỷ niệm.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+    if (isPickingRef.current) return;
+    isPickingRef.current = true;
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Cần quyền thư viện ảnh", "Cấp quyền thư viện ảnh để chọn ảnh cho kỷ niệm.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+      }
+    } catch {
+      Alert.alert("Không thể chọn ảnh", "Đã có lỗi xảy ra, vui lòng thử lại.");
+    } finally {
+      isPickingRef.current = false;
     }
   }
 
@@ -131,14 +148,14 @@ export default function NewMemoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 16 },
   title: { fontSize: 16, fontWeight: "500", marginBottom: 12 },
-  photoRow: { marginBottom: 10 },
-  photoRowContent: { gap: 8, paddingRight: 4 },
+  photoRow: { flexGrow: 0, marginBottom: 10 },
+  photoRowContent: { gap: 8, paddingRight: 4, paddingTop: 8 },
   photoThumbWrap: { width: 90, height: 90 },
   photoThumb: { width: 90, height: 90, borderRadius: 10 },
   removeBtn: {
     position: "absolute",
-    top: -6,
-    right: -6,
+    top: 2,
+    right: 2,
     width: 20,
     height: 20,
     borderRadius: 10,
