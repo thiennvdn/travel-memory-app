@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
-import { mockMemories, Memory } from "../data/mockMemories";
+import { Memory } from "../types/memory";
+import { useMemories } from "../hooks/useMemories";
 
 function TimelineRow({ item }: { item: Memory }) {
   return (
@@ -17,15 +18,21 @@ function TimelineRow({ item }: { item: Memory }) {
 }
 
 export default function TimelineScreen() {
+  const { data: memories, loading, error } = useMemories();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Dòng thời gian</Text>
-      <FlatList
-        data={mockMemories}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
-        renderItem={({ item }) => <TimelineRow item={item} />}
-      />
+      {loading && <Text style={styles.statusText}>Đang tải...</Text>}
+      {!loading && error && <Text style={styles.statusText}>{error}</Text>}
+      {!loading && !error && (
+        <FlatList
+          data={memories ?? []}
+          keyExtractor={(m) => m.id}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+          renderItem={({ item }) => <TimelineRow item={item} />}
+        />
+      )}
     </View>
   );
 }
@@ -33,6 +40,7 @@ export default function TimelineScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", paddingTop: 16 },
   title: { fontSize: 16, fontWeight: "500", paddingHorizontal: 16, marginBottom: 12 },
+  statusText: { fontSize: 13, color: "#595959", paddingHorizontal: 16 },
   row: {
     flexDirection: "row",
     gap: 10,

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { mockStats } from "../data/mockMemories";
+import { mockStats } from "../data/mockStats";
+import { useMemories } from "../hooks/useMemories";
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -12,6 +13,8 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 export default function StatsScreen() {
+  const { data: memories } = useMemories();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Hành trình của bạn</Text>
@@ -19,7 +22,7 @@ export default function StatsScreen() {
         <StatCard label="Tỉnh/thành đã đến" value={mockStats.provinces} />
         <StatCard label="Chuyến đi" value={mockStats.trips} />
         <StatCard label="Điểm bay dù" value={mockStats.flightSpots} />
-        <StatCard label="Kỷ niệm đã lưu" value={mockStats.memoriesSaved} />
+        <StatCard label="Kỷ niệm đã lưu" value={memories?.length ?? 0} />
       </View>
     </View>
   );

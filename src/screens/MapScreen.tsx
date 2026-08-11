@@ -1,20 +1,26 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
-import { mockMemories, Memory } from "../data/mockMemories";
+import { Memory } from "../types/memory";
+import { useMemories } from "../hooks/useMemories";
 import MemoryPreviewCard from "../components/MemoryPreviewCard";
 import { getRegionForCoordinates } from "../utils/mapRegion";
-
-const initialRegion = getRegionForCoordinates(mockMemories);
 
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const [selected, setSelected] = useState<Memory | null>(null);
   const [showsUserLocation, setShowsUserLocation] = useState(false);
+  const { data: memories, loading, error } = useMemories();
+
+  const initialRegion = useMemo(
+    () => getRegionForCoordinates(memories ?? []),
+    [memories]
+  );
 
   useEffect(() => {
+    if (!memories) return;
     let cancelled = false;
 
     async function centerOnUser() {
@@ -44,34 +50,38 @@ export default function MapScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [memories]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Bản đồ của bạn</Text>
       <View style={styles.mapArea}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation={showsUserLocation}
-        >
-          {mockMemories.map((m) => (
-            <Marker
-              key={m.id}
-              coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-              anchor={{ x: 0.5, y: 1 }}
-              centerOffset={{ x: 0, y: -24.5 }}
-              tracksViewChanges={false}
-              onPress={() => setSelected(m)}
-            >
-              <View style={styles.pinWrap}>
-                <View style={[styles.pinCircle, { backgroundColor: m.color }]} />
-                <View style={styles.pinTail} />
-              </View>
-            </Marker>
-          ))}
-        </MapView>
+        {loading && <Text style={styles.statusText}>Đang tải...</Text>}
+        {!loading && error && <Text style={styles.statusText}>{error}</Text>}
+        {!loading && !error && memories && (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={initialRegion}
+            showsUserLocation={showsUserLocation}
+          >
+            {memories.map((m) => (
+              <Marker
+                key={m.id}
+                coordinate={{ latitude: m.latitude, longitude: m.longitude }}
+                anchor={{ x: 0.5, y: 1 }}
+                centerOffset={{ x: 0, y: -24.5 }}
+                tracksViewChanges={false}
+                onPress={() => setSelected(m)}
+              >
+                <View style={styles.pinWrap}>
+                  <View style={[styles.pinCircle, { backgroundColor: m.color }]} />
+                  <View style={styles.pinTail} />
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+        )}
 
         <Pressable style={styles.fab} accessibilityLabel="Thêm kỷ niệm mới">
           <Ionicons name="add" size={22} color="#fff" />
@@ -96,6 +106,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#E6F1FB",
   },
+  statusText: { flex: 1, textAlign: "center", paddingTop: 24, fontSize: 13, color: "#595959" },
   map: { flex: 1 },
   pinWrap: { alignItems: "center" },
   pinCircle: {
