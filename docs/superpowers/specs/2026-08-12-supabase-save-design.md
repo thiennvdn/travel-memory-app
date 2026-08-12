@@ -38,6 +38,8 @@ create policy "Ai cũng upload được ảnh" on storage.objects for insert wit
 create policy "Ai cũng ghi được kỷ niệm" on memories for insert with check (true);
 ```
 
+**Thư viện thêm mới (phát hiện cần thiết ở final review, không có trong dự tính ban đầu):** `expo-file-system` (đọc file local thành base64) + `base64-arraybuffer` (decode base64 sang `ArrayBuffer`) — cần thiết vì cách đọc file ban đầu (`fetch(uri)` lấy `Blob`) không hoạt động đúng trên React Native, xem chi tiết ở mục "Luồng Lưu kỷ niệm" bước 4.
+
 Ghi chú: bucket `public: true` + policy đọc mở cho mọi người, giống policy đọc của bảng `memories` — chấp nhận được ở giai đoạn 1 người dùng, không có đăng nhập (rủi ro này đã ghi nhận từ bước trước, cần thêm auth trước khi phát hành Play Store thật). Chưa thêm policy `delete` cho `storage.objects`/`memories` — thuộc spec Xóa sau.
 
 ## Sửa refetch-on-focus (nền tảng dùng chung, áp dụng ngay trong bước này)
@@ -46,9 +48,11 @@ Ghi chú: bucket `public: true` + policy đọc mở cho mọi người, giống
 
 Hệ quả phụ (chấp nhận được): mỗi lần chuyển tab qua lại sẽ gọi lại Supabase 1 lần — không có cache. Đã ghi nhận là giới hạn chấp nhận được ở bước đọc dữ liệu trước, chưa cần sửa ở bước này.
 
+**Lưu ý (phát hiện ở final review):** chỉ set `loading = true` ở lần tải đầu tiên (khi chưa có `data`), không phải mỗi lần refetch — nếu không, mỗi lần chuyển qua tab "Bản đồ" sẽ làm `MapView` unmount/remount và canh lại GPS từ đầu (giật màn hình, mất trạng thái pan/zoom). Refetch chạy nền, giữ nguyên dữ liệu cũ trên màn hình cho tới khi có dữ liệu mới.
+
 ## Luồng "Lưu kỷ niệm" (`NewMemoryScreen`)
 
-Trạng thái mới: `saving: boolean` (khoá nút, chặn bấm đúp và hiện "Đang lưu...").
+Trạng thái mới: `saving: boolean` (hiện "Đang lưu..." trên nút). **Lưu ý (phát hiện ở final review):** riêng việc chặn bấm đúp phải dùng `useRef` (`isSavingRef`) chứ không chỉ dựa vào state `saving` — state không cập nhật đồng bộ nên 2 lần bấm liên tiếp trong cùng 1 tick có thể đều lọt qua, tạo 2 dòng trùng nhau (giống cách `isPickingRef` đã xử lý cho việc chọn ảnh).
 
 Khi bấm "Lưu kỷ niệm":
 
@@ -56,7 +60,8 @@ Khi bấm "Lưu kỷ niệm":
 2. Set `saving = true`.
 3. Xin quyền vị trí (`Location.requestForegroundPermissionsAsync`) rồi lấy toạ độ hiện tại (`Location.getCurrentPositionAsync`) — dùng lại đúng cách `MapScreen` đã làm.
    - Nếu quyền bị từ chối, hoặc lấy vị trí lỗi/timeout → `Alert` báo "Cần quyền vị trí để lưu kỷ niệm.", set `saving = false`, dừng lại. **Không lưu khi thiếu vị trí** (khác với bản đồ — đây là hành động chủ động của người dùng nên báo lỗi rõ, không có bản đồ tự canh làm fallback).
-4. Nếu có ảnh trong `photos` (mảng local URI `file://...` từ bước ghi ảnh trước): với từng ảnh, gọi `fetch(uri)` lấy `Blob` (cách chuẩn để đọc file local trong Expo/RN), rồi `supabase.storage.from('memory-photos').upload(path, blob)`, `path` là tên file ngẫu nhiên duy nhất (ví dụ `${Date.now()}-${index}.jpg`). Sau khi upload xong, lấy public URL bằng `getPublicUrl(path)`.
+4. Nếu có ảnh trong `photos` (mảng local URI `file://...` từ bước ghi ảnh trước): với từng ảnh, đọc file thành base64 bằng `expo-file-system` (`FileSystem.readAsStringAsync(uri, { encoding: Base64 })`), decode sang `ArrayBuffer` bằng `base64-arraybuffer`, rồi `supabase.storage.from('memory-photos').upload(path, arrayBuffer, { contentType: 'image/jpeg' })`, `path` là tên file ngẫu nhiên duy nhất (ví dụ `${Date.now()}-${index}.jpg`). Sau khi upload xong, lấy public URL bằng `getPublicUrl(path)`.
+   - **Lưu ý (phát hiện ở final review, sửa lại so với thiết kế ban đầu):** cách đọc file ban đầu dự định (`fetch(uri)` lấy `Blob` rồi upload thẳng) **không hoạt động đúng trên React Native** — `@supabase/storage-js` tự tài liệu hoá rằng `Blob`/`File`/`FormData` không dùng được trên RN, request vẫn trả về thành công nhưng ảnh lưu vào Storage bị rỗng/hỏng (lỗi âm thầm, không có thông báo lỗi). Phải đọc file qua `expo-file-system` + decode base64 như mô tả ở trên. Cũng cần khai `contentType` tường minh, nếu không Storage sẽ lưu mặc định `text/plain` khiến URL không dùng được như ảnh dù bytes đúng.
    - Nếu upload bất kỳ ảnh nào lỗi → `Alert` báo "Không upload được ảnh, thử lại.", set `saving = false`, dừng lại, **giữ nguyên toàn bộ dữ liệu đã nhập** (không xoá form) để bấm Lưu lại được.
 5. Chọn ngẫu nhiên 1 màu từ bảng màu cố định (lấy lại đúng 4 màu đã dùng cho dữ liệu mẫu: `#1D9E75`, `#D85A30`, `#BA7517`, `#7F77DD`).
 6. Insert 1 dòng vào `memories`: `place`, `note`, `color` (vừa chọn), `latitude`/`longitude` (từ bước 3), `photos` (mảng public URL từ bước 4, rỗng nếu không có ảnh), `memory_date` = ngày hôm nay (định dạng `yyyy-mm-dd`).
