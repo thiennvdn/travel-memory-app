@@ -13,12 +13,62 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { supabase } from "../lib/supabase";
 
-// Bước sau: nối expo-av (ghi âm) + lưu vào Supabase Storage khi có backend.
+const PIN_COLORS = ["#1D9E75", "#D85A30", "#BA7517", "#7F77DD"];
+
+function todayIsoDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+async function uploadPhoto(uri: string, index: number): Promise<string> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const path = `${Date.now()}-${index}.jpg`;
+  const { error: uploadError } = await supabase.storage
+    .from("memory-photos")
+    .upload(path, blob);
+  if (uploadError) {
+    throw uploadError;
+  }
+  const { data } = supabase.storage.from("memory-photos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function uploadAllPhotos(uris: string[]): Promise<string[] | null> {
+  try {
+    return await Promise.all(uris.map((uri, index) => uploadPhoto(uri, index)));
+  } catch {
+    Alert.alert("Không upload được ảnh", "Đã có lỗi xảy ra, thử lại.");
+    return null;
+  }
+}
+
+async function getCurrentPosition(): Promise<Location.LocationObject | null> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Cần quyền vị trí", "Cần quyền vị trí để lưu kỷ niệm.");
+      return null;
+    }
+    return await Location.getCurrentPositionAsync({});
+  } catch {
+    Alert.alert("Cần quyền vị trí", "Cần quyền vị trí để lưu kỷ niệm.");
+    return null;
+  }
+}
+
+// Bước sau: nối expo-av (ghi âm) khi cần.
 export default function NewMemoryScreen() {
   const [place, setPlace] = useState("");
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const isPickingRef = useRef(false);
 
   async function handleTakePhoto() {
@@ -90,6 +140,49 @@ export default function NewMemoryScreen() {
     setPhotos((prev) => prev.filter((p) => p !== uri));
   }
 
+  async function handleSave() {
+    if (saving) return;
+    if (place.trim() === "") {
+      Alert.alert("Thiếu địa điểm", "Nhập địa điểm trước khi lưu.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const position = await getCurrentPosition();
+      if (!position) return;
+
+      const photoUrls = await uploadAllPhotos(photos);
+      if (!photoUrls) return;
+
+      const color = PIN_COLORS[Math.floor(Math.random() * PIN_COLORS.length)];
+
+      const { error: insertError } = await supabase.from("memories").insert({
+        place: place.trim(),
+        note,
+        color,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        photos: photoUrls,
+        memory_date: todayIsoDate(),
+      });
+
+      if (insertError) {
+        Alert.alert("Không lưu được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
+        return;
+      }
+
+      Alert.alert("Đã lưu kỷ niệm!");
+      setPlace("");
+      setNote("");
+      setPhotos([]);
+    } catch {
+      Alert.alert("Không lưu được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ghi kỷ niệm mới</Text>
@@ -138,8 +231,12 @@ export default function NewMemoryScreen() {
         <Ionicons name="happy-outline" size={18} color="#595959" style={{ marginLeft: 12 }} />
       </View>
 
-      <Pressable style={styles.saveBtn}>
-        <Text style={styles.saveText}>Lưu kỷ niệm</Text>
+      <Pressable
+        style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+        onPress={handleSave}
+        disabled={saving}
+      >
+        <Text style={styles.saveText}>{saving ? "Đang lưu..." : "Lưu kỷ niệm"}</Text>
       </Pressable>
     </View>
   );
@@ -192,5 +289,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  saveBtnDisabled: { opacity: 0.6 },
   saveText: { color: "#fff", fontSize: 13, fontWeight: "500" },
 });
