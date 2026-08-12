@@ -2,7 +2,7 @@
 
 Ứng dụng React Native (Expo) ghi lại kỷ niệm du lịch: bản đồ, dòng thời gian, ghi kỷ niệm mới, thống kê hành trình. Mục tiêu cuối: phát hành lên Google Play.
 
-Bản đồ, dòng thời gian và thống kê đã **đọc dữ liệu thật từ Supabase** (Postgres) qua `src/hooks/useMemories.ts` — không còn dùng mock data cho các màn này (riêng thống kê tổng hợp từ `src/data/mockStats.ts` vẫn là mock, xem mục "Cấu trúc"). Bản đồ đã dùng **bản đồ thật** (`react-native-maps`) với toạ độ lat/lng thật + canh theo GPS. Màn "Ghi mới" đã chụp/chọn được **ảnh thật** (`expo-image-picker`), nhưng nút "Lưu kỷ niệm" chưa nối logic lưu (chưa ghi vào Supabase, chưa upload ảnh) — kỷ niệm mới nhập sẽ không được lưu lại.
+Bản đồ, dòng thời gian và thống kê đã **đọc dữ liệu thật từ Supabase** (Postgres) qua `src/hooks/useMemories.ts` — không còn dùng mock data cho các màn này (riêng thống kê tổng hợp từ `src/data/mockStats.ts` vẫn là mock, xem mục "Cấu trúc"). Bản đồ đã dùng **bản đồ thật** (`react-native-maps`) với toạ độ lat/lng thật + canh theo GPS. Màn "Ghi mới" đã chụp/chọn được **ảnh thật** (`expo-image-picker`) và nút "Lưu kỷ niệm" đã **ghi thật** vào Supabase (lấy GPS hiện tại + upload ảnh lên Storage). Có thể **xóa** kỷ niệm từ thẻ xem nhanh trên bản đồ hoặc bấm giữ 1 dòng trong Timeline.
 
 ## Chạy thử trên điện thoại
 
@@ -13,7 +13,7 @@ Bản đồ, dòng thời gian và thống kê đã **đọc dữ liệu thật 
    ```
 3. Cấu hình Supabase (bắt buộc — app sẽ crash ngay khi mở nếu bỏ qua bước này):
    1. Tạo một project mới trên [Supabase](https://supabase.com).
-   2. Mở **SQL Editor** trong project đó, chạy toàn bộ đoạn SQL trong [docs/superpowers/specs/2026-08-11-supabase-read-design.md](docs/superpowers/specs/2026-08-11-supabase-read-design.md) để tạo bảng `memories` (và dữ liệu mẫu nếu có).
+   2. Mở **SQL Editor** trong project đó, chạy lần lượt SQL trong 3 file sau (đúng thứ tự): [docs/superpowers/specs/2026-08-11-supabase-read-design.md](docs/superpowers/specs/2026-08-11-supabase-read-design.md) (tạo bảng `memories` + dữ liệu mẫu), [docs/superpowers/specs/2026-08-12-supabase-save-design.md](docs/superpowers/specs/2026-08-12-supabase-save-design.md) (Storage bucket `memory-photos` + quyền ghi), [docs/superpowers/specs/2026-08-12-delete-memory-design.md](docs/superpowers/specs/2026-08-12-delete-memory-design.md) (quyền xóa).
    3. Copy file `.env.example` thành `.env`, rồi điền `EXPO_PUBLIC_SUPABASE_URL` và `EXPO_PUBLIC_SUPABASE_ANON_KEY` lấy từ Supabase Dashboard → **Project Settings → API**.
 4. Chạy:
    ```bash
@@ -32,7 +32,7 @@ src/
   types/memory.ts           # Kiểu dữ liệu Memory dùng chung
   data/mockStats.ts         # Dữ liệu giả cho màn Thống kê — chưa thay bằng Supabase
   lib/supabase.ts           # Khởi tạo Supabase client (đọc từ biến môi trường EXPO_PUBLIC_SUPABASE_*)
-  hooks/useMemories.ts      # Hook gọi Supabase bảng `memories`, trả về { data, loading, error }
+  hooks/useMemories.ts      # Hook gọi Supabase bảng `memories`: { data, loading, error, deleteMemory }
   utils/mapRegion.ts        # Hàm tính vùng bản đồ vừa khung chứa hết toạ độ
   screens/
     MapScreen.tsx           # Bản đồ thật (react-native-maps) + pin theo lat/lng + canh GPS
@@ -56,7 +56,7 @@ Các tính năng lớn được viết design doc + implementation plan trước
 1. ~~Thay khung bản đồ giả bằng bản đồ thật~~ — **Đã xong** (`react-native-maps` + `expo-location`, xem [docs/superpowers/specs/2026-08-11-real-map-design.md](docs/superpowers/specs/2026-08-11-real-map-design.md)).
    - Còn thiếu: Android Google Maps API key (`android.config.googleMaps.apiKey` trong `app.json`) — cần trước khi build ngoài Expo Go (dev client / Play Store).
 2. ~~Nối `expo-image-picker` để chọn/chụp ảnh thật ở màn hình "Ghi mới"~~ — **Đã xong** (xem [docs/superpowers/specs/2026-08-11-photo-picker-design.md](docs/superpowers/specs/2026-08-11-photo-picker-design.md)). Ảnh chỉ tồn tại local, chưa upload — nút "Lưu kỷ niệm" chưa nối logic.
-3. Dựng backend Supabase (Postgres) — bảng `memories`, `trips`, Storage cho ảnh. Đã xong phần đọc dữ liệu (bảng `memories`, xem [docs/superpowers/specs/2026-08-11-supabase-read-design.md](docs/superpowers/specs/2026-08-11-supabase-read-design.md)) — còn thiếu: bảng `trips`, Storage cho ảnh.
-4. Thay mock data bằng gọi API Supabase (đọc/ghi thật). Đã xong phần đọc dữ liệu (Map/Timeline/Stats dùng `src/hooks/useMemories.ts`, xem [docs/superpowers/specs/2026-08-11-supabase-read-design.md](docs/superpowers/specs/2026-08-11-supabase-read-design.md)) — còn thiếu: ghi dữ liệu thật + upload ảnh (nút "Lưu kỷ niệm" ở màn "Ghi mới", bước sau).
+3. ~~Dựng backend Supabase (Postgres) — bảng `memories`, Storage cho ảnh~~ — **Đã xong** phần đọc/ghi/xóa kỷ niệm + ảnh (xem [spec đọc](docs/superpowers/specs/2026-08-11-supabase-read-design.md), [spec ghi](docs/superpowers/specs/2026-08-12-supabase-save-design.md), [spec xóa](docs/superpowers/specs/2026-08-12-delete-memory-design.md)). Còn thiếu: bảng `trips` (chưa có khái niệm "chuyến đi").
+4. ~~Thay mock data bằng gọi API Supabase (đọc/ghi thật)~~ — **Đã xong** cho `memories` (Map/Timeline/Stats đọc thật qua `src/hooks/useMemories.ts`, "Ghi mới" ghi thật + xóa thật). `mockStats.ts` (tỉnh/thành, chuyến đi, điểm bay dù) vẫn còn mock — chưa có schema tương ứng.
 5. Thêm offline-first (lưu local trước, đồng bộ sau) bằng SQLite/WatermelonDB.
 6. Chuẩn bị phát hành Google Play: package name, icon/splash, build production (EAS Build), Google Play Console.
