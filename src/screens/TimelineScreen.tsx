@@ -1,11 +1,11 @@
-import React from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import React, { useRef } from "react";
+import { View, Text, FlatList, Pressable, Alert, StyleSheet } from "react-native";
 import { Memory } from "../types/memory";
 import { useMemories } from "../hooks/useMemories";
 
-function TimelineRow({ item }: { item: Memory }) {
+function TimelineRow({ item, onLongPress }: { item: Memory; onLongPress: () => void }) {
   return (
-    <View style={styles.row}>
+    <Pressable onLongPress={onLongPress} style={styles.row}>
       <View style={[styles.thumb, { backgroundColor: item.color }]} />
       <View>
         <Text style={styles.place}>{item.place}</Text>
@@ -13,12 +13,36 @@ function TimelineRow({ item }: { item: Memory }) {
           {item.date} · {item.note}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 export default function TimelineScreen() {
-  const { data: memories, loading, error } = useMemories();
+  const { data: memories, loading, error, deleteMemory } = useMemories();
+  const isDeletingRef = useRef(false);
+
+  function handleLongPress(item: Memory) {
+    Alert.alert(
+      "Xóa kỷ niệm?",
+      "Kỷ niệm và ảnh đính kèm sẽ bị xóa vĩnh viễn, không thể hoàn tác.",
+      [
+        { text: "Huỷ", style: "cancel" },
+        {
+          text: "Xóa",
+          style: "destructive",
+          onPress: async () => {
+            if (isDeletingRef.current) return;
+            isDeletingRef.current = true;
+            try {
+              await deleteMemory(item);
+            } finally {
+              isDeletingRef.current = false;
+            }
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -30,7 +54,9 @@ export default function TimelineScreen() {
           data={memories ?? []}
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
-          renderItem={({ item }) => <TimelineRow item={item} />}
+          renderItem={({ item }) => (
+            <TimelineRow item={item} onLongPress={() => handleLongPress(item)} />
+          )}
         />
       )}
     </View>
