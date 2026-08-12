@@ -12,7 +12,20 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const [selected, setSelected] = useState<Memory | null>(null);
   const [showsUserLocation, setShowsUserLocation] = useState(false);
-  const { data: memories, loading, error } = useMemories();
+  const isDeletingRef = useRef(false);
+
+  async function handleDeleteSelected() {
+    if (!selected) return;
+    if (isDeletingRef.current) return;
+    isDeletingRef.current = true;
+    const success = await deleteMemory(selected);
+    isDeletingRef.current = false;
+    if (success) {
+      setSelected(null);
+    }
+  }
+
+  const { data: memories, loading, error, deleteMemory } = useMemories();
 
   const initialRegion = useMemo(
     () => getRegionForCoordinates(memories ?? []),
@@ -88,7 +101,11 @@ export default function MapScreen() {
         </Pressable>
 
         {selected && (
-          <MemoryPreviewCard memory={selected} onClose={() => setSelected(null)} />
+          <MemoryPreviewCard
+            memory={selected}
+            onClose={() => setSelected(null)}
+            onDelete={handleDeleteSelected}
+          />
         )}
       </View>
     </View>
