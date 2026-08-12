@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { Memory } from "../types/memory";
 
@@ -12,49 +13,51 @@ export function useMemories() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data: rows, error: fetchError } = await supabase
-          .from("memories")
-          .select("*")
-          .order("memory_date", { ascending: false });
+      async function load() {
+        setLoading(true);
+        setError(null);
+        try {
+          const { data: rows, error: fetchError } = await supabase
+            .from("memories")
+            .select("*")
+            .order("memory_date", { ascending: false });
 
-        if (cancelled) return;
+          if (cancelled) return;
 
-        if (fetchError) {
-          setError("Không tải được dữ liệu, thử lại sau.");
-          return;
+          if (fetchError) {
+            setError("Không tải được dữ liệu, thử lại sau.");
+            return;
+          }
+
+          setData(
+            (rows ?? []).map((row) => ({
+              id: row.id,
+              place: row.place,
+              date: formatDate(row.memory_date),
+              note: row.note,
+              color: row.color,
+              latitude: row.latitude,
+              longitude: row.longitude,
+              photos: row.photos ?? [],
+            }))
+          );
+        } catch {
+          if (!cancelled) setError("Không tải được dữ liệu, thử lại sau.");
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-
-        setData(
-          (rows ?? []).map((row) => ({
-            id: row.id,
-            place: row.place,
-            date: formatDate(row.memory_date),
-            note: row.note,
-            color: row.color,
-            latitude: row.latitude,
-            longitude: row.longitude,
-            photos: row.photos ?? [],
-          }))
-        );
-      } catch {
-        if (!cancelled) setError("Không tải được dữ liệu, thử lại sau.");
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      load();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   return { data, loading, error };
 }
