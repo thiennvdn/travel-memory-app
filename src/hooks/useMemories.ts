@@ -1,11 +1,19 @@
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
+import { Alert } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Memory } from "../types/memory";
 
 function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
   return `${day}/${month}/${year}`;
+}
+
+function extractStoragePath(url: string): string | null {
+  const marker = "/memory-photos/";
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return url.slice(index + marker.length);
 }
 
 export function useMemories() {
@@ -66,5 +74,37 @@ export function useMemories() {
     }, [])
   );
 
-  return { data, loading, error };
+  async function deleteMemory(memory: Memory): Promise<boolean> {
+    const { error: deleteError } = await supabase
+      .from("memories")
+      .delete()
+      .eq("id", memory.id);
+
+    if (deleteError) {
+      console.error("[useMemories] delete failed:", deleteError);
+      Alert.alert("Không xóa được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
+      return false;
+    }
+
+    if (memory.photos.length > 0) {
+      const paths = memory.photos
+        .map(extractStoragePath)
+        .filter((path): path is string => path !== null);
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("memory-photos")
+          .remove(paths);
+        if (storageError) {
+          console.error("[useMemories] storage cleanup failed:", storageError);
+        }
+      }
+    }
+
+    const updated = (dataRef.current ?? []).filter((m) => m.id !== memory.id);
+    dataRef.current = updated;
+    setData(updated);
+    return true;
+  }
+
+  return { data, loading, error, deleteMemory };
 }
