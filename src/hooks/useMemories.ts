@@ -75,13 +75,17 @@ export function useMemories() {
   );
 
   async function deleteMemory(memory: Memory): Promise<boolean> {
-    const { error: deleteError } = await supabase
+    const { data: deletedRows, error: deleteError } = await supabase
       .from("memories")
       .delete()
-      .eq("id", memory.id);
+      .eq("id", memory.id)
+      .select("id");
 
-    if (deleteError) {
-      console.error("[useMemories] delete failed:", deleteError);
+    if (deleteError || (deletedRows ?? []).length === 0) {
+      console.error(
+        "[useMemories] delete failed:",
+        deleteError ?? "no rows deleted (RLS policy missing or row already gone)"
+      );
       Alert.alert("Không xóa được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
       return false;
     }
@@ -91,11 +95,15 @@ export function useMemories() {
         .map(extractStoragePath)
         .filter((path): path is string => path !== null);
       if (paths.length > 0) {
-        const { error: storageError } = await supabase.storage
-          .from("memory-photos")
-          .remove(paths);
-        if (storageError) {
-          console.error("[useMemories] storage cleanup failed:", storageError);
+        try {
+          const { error: storageError } = await supabase.storage
+            .from("memory-photos")
+            .remove(paths);
+          if (storageError) {
+            console.error("[useMemories] storage cleanup failed:", storageError);
+          }
+        } catch (err) {
+          console.error("[useMemories] storage cleanup threw:", err);
         }
       }
     }

@@ -13,6 +13,7 @@ export default function MapScreen() {
   const [selected, setSelected] = useState<Memory | null>(null);
   const [showsUserLocation, setShowsUserLocation] = useState(false);
   const isDeletingRef = useRef(false);
+  const hasCenteredRef = useRef(false);
 
   async function handleDeleteSelected() {
     if (!selected) return;
@@ -36,7 +37,8 @@ export default function MapScreen() {
   );
 
   useEffect(() => {
-    if (!memories) return;
+    if (!memories || hasCenteredRef.current) return;
+    hasCenteredRef.current = true;
     let cancelled = false;
 
     async function centerOnUser() {
