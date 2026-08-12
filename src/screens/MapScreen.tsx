@@ -18,10 +18,13 @@ export default function MapScreen() {
     if (!selected) return;
     if (isDeletingRef.current) return;
     isDeletingRef.current = true;
-    const success = await deleteMemory(selected);
-    isDeletingRef.current = false;
-    if (success) {
-      setSelected(null);
+    try {
+      const success = await deleteMemory(selected);
+      if (success) {
+        setSelected(null);
+      }
+    } finally {
+      isDeletingRef.current = false;
     }
   }
 
