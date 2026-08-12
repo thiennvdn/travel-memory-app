@@ -14,6 +14,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import * as FileSystem from "expo-file-system";
+import { decode } from "base64-arraybuffer";
 import { supabase } from "../lib/supabase";
 
 const PIN_COLORS = ["#1D9E75", "#D85A30", "#BA7517", "#7F77DD"];
@@ -27,12 +29,13 @@ function todayIsoDate(): string {
 }
 
 async function uploadPhoto(uri: string, index: number): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
   const path = `${Date.now()}-${index}.jpg`;
   const { error: uploadError } = await supabase.storage
     .from("memory-photos")
-    .upload(path, blob);
+    .upload(path, decode(base64), { contentType: "image/jpeg" });
   if (uploadError) {
     throw uploadError;
   }
@@ -43,7 +46,8 @@ async function uploadPhoto(uri: string, index: number): Promise<string> {
 async function uploadAllPhotos(uris: string[]): Promise<string[] | null> {
   try {
     return await Promise.all(uris.map((uri, index) => uploadPhoto(uri, index)));
-  } catch {
+  } catch (err) {
+    console.error("[NewMemoryScreen] upload failed:", err);
     Alert.alert("Không upload được ảnh", "Đã có lỗi xảy ra, thử lại.");
     return null;
   }
@@ -53,11 +57,13 @@ async function getCurrentPosition(): Promise<Location.LocationObject | null> {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
+      console.error("[NewMemoryScreen] location permission denied");
       Alert.alert("Cần quyền vị trí", "Cần quyền vị trí để lưu kỷ niệm.");
       return null;
     }
     return await Location.getCurrentPositionAsync({});
-  } catch {
+  } catch (err) {
+    console.error("[NewMemoryScreen] get location failed:", err);
     Alert.alert("Cần quyền vị trí", "Cần quyền vị trí để lưu kỷ niệm.");
     return null;
   }
@@ -70,6 +76,7 @@ export default function NewMemoryScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const isPickingRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   async function handleTakePhoto() {
     if (isPickingRef.current) return;
@@ -84,7 +91,8 @@ export default function NewMemoryScreen() {
       if (!result.canceled) {
         setPhotos((prev) => [...prev, result.assets[0].uri]);
       }
-    } catch {
+    } catch (err) {
+      console.error("[NewMemoryScreen] take photo failed:", err);
       Alert.alert("Không thể chụp ảnh", "Đã có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       isPickingRef.current = false;
@@ -108,7 +116,8 @@ export default function NewMemoryScreen() {
       if (!result.canceled) {
         setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
       }
-    } catch {
+    } catch (err) {
+      console.error("[NewMemoryScreen] pick photo failed:", err);
       Alert.alert("Không thể chọn ảnh", "Đã có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       isPickingRef.current = false;
@@ -141,12 +150,13 @@ export default function NewMemoryScreen() {
   }
 
   async function handleSave() {
-    if (saving) return;
+    if (isSavingRef.current) return;
     if (place.trim() === "") {
       Alert.alert("Thiếu địa điểm", "Nhập địa điểm trước khi lưu.");
       return;
     }
 
+    isSavingRef.current = true;
     setSaving(true);
     try {
       const position = await getCurrentPosition();
@@ -168,6 +178,7 @@ export default function NewMemoryScreen() {
       });
 
       if (insertError) {
+        console.error("[NewMemoryScreen] insert failed:", insertError);
         Alert.alert("Không lưu được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
         return;
       }
@@ -176,10 +187,12 @@ export default function NewMemoryScreen() {
       setPlace("");
       setNote("");
       setPhotos([]);
-    } catch {
+    } catch (err) {
+      console.error("[NewMemoryScreen] save failed:", err);
       Alert.alert("Không lưu được kỷ niệm", "Đã có lỗi xảy ra, thử lại.");
     } finally {
       setSaving(false);
+      isSavingRef.current = false;
     }
   }
 
